@@ -1,0 +1,295 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SUPERADMIN
+  TEACHER
+  STUDENT
+  PARENT
+}
+
+enum LessonType {
+  VIDEO
+  TEXT
+  PDF
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+enum FeeType {
+  TUITION
+  EXAM
+  TRANSPORT
+}
+
+enum FeeStatus {
+  PAID
+  PENDING
+  OVERDUE
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  studentProfile Student?
+  parentProfile  Parent?
+  teacherProfile Teacher?
+
+  notificationsCreated Notification[] @relation("CreatedBy")
+  notificationsRead    NotificationRead[]
+}
+
+model Student {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  grade     String
+  section   String?
+  rollNo    String?
+  parentId  String?
+  parent    Parent?  @relation(fields: [parentId], references: [id])
+
+  enrollments       Enrollment[]
+  lessonProgress    LessonProgress[]
+  submissions       Submission[]
+  quizAttempts      QuizAttempt[]
+  attendanceRecords AttendanceRecord[]
+  feePayments       FeePayment[]
+}
+
+model Parent {
+  id       String    @id @default(uuid())
+  userId   String    @unique
+  user     User      @relation(fields: [userId], references: [id])
+  children Student[]
+}
+
+model Teacher {
+  id       String   @id @default(uuid())
+  userId   String   @unique
+  user     User     @relation(fields: [userId], references: [id])
+  subjects String[] // Array of subjects
+
+  courses            Course[]
+  assignments        Assignment[]
+  quizzes            Quiz[]
+  attendanceSessions AttendanceSession[]
+}
+
+model Course {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  subject     String
+  grade       String
+  teacherId   String
+  teacher     Teacher  @relation(fields: [teacherId], references: [id])
+  thumbnail   String?
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  chapters           Chapter[]
+  enrollments        Enrollment[]
+  assignments        Assignment[]
+  quizzes            Quiz[]
+  attendanceSessions AttendanceSession[]
+  notifications      Notification[]
+}
+
+model Chapter {
+  id       String   @id @default(uuid())
+  courseId String
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title    String
+  order    Int
+
+  lessons Lesson[]
+}
+
+model Lesson {
+  id        String     @id @default(uuid())
+  chapterId String
+  chapter   Chapter    @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  title     String
+  type      LessonType
+  content   String? // text content or URL
+  order     Int
+
+  progress LessonProgress[]
+}
+
+model Enrollment {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  enrolledAt DateTime @default(now())
+
+  @@unique([studentId, courseId])
+}
+
+model LessonProgress {
+  id          String    @id @default(uuid())
+  studentId   String
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lessonId    String
+  lesson      Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+
+  @@unique([studentId, lessonId])
+}
+
+model Assignment {
+  id          String   @id @default(uuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  teacherId   String
+  teacher     Teacher  @relation(fields: [teacherId], references: [id])
+  title       String
+  description String?
+  dueDate     DateTime
+  maxMarks    Int
+  createdAt   DateTime @default(now())
+
+  submissions Submission[]
+}
+
+model Submission {
+  id           String     @id @default(uuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  fileUrl      String?
+  textContent  String?
+  submittedAt  DateTime   @default(now())
+  marks        Float?
+  feedback     String?
+  status       String     @default("PENDING") // PENDING, GRADED
+
+  @@unique([assignmentId, studentId])
+}
+
+model Quiz {
+  id         String   @id @default(uuid())
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  teacherId  String
+  teacher    Teacher  @relation(fields: [teacherId], references: [id])
+  title      String
+  totalMarks Int
+
+  questions    Question[]
+  quizAttempts QuizAttempt[]
+}
+
+model Question {
+  id            String   @id @default(uuid())
+  quizId        String
+  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  text          String
+  options       String[] // JSON string array or primitive array if supported
+  correctAnswer String
+  marks         Int
+}
+
+model QuizAttempt {
+  id          String   @id @default(uuid())
+  quizId      String
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers     String   // Stored as JSON string
+  score       Int?
+  attemptedAt DateTime @default(now())
+
+  @@unique([quizId, studentId])
+}
+
+model AttendanceSession {
+  id        String   @id @default(uuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  date      DateTime
+  teacherId String
+  teacher   Teacher  @relation(fields: [teacherId], references: [id])
+
+  records AttendanceRecord[]
+}
+
+model AttendanceRecord {
+  id          String            @id @default(uuid())
+  sessionId   String
+  session     AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  studentId   String
+  student     Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  status      AttendanceStatus
+
+  @@unique([sessionId, studentId])
+}
+
+model FeeStructure {
+  id           String   @id @default(uuid())
+  name         String
+  amount       Float
+  dueDate      DateTime
+  grade        String
+  type         FeeType
+  academicYear String
+
+  payments FeePayment[]
+}
+
+model FeePayment {
+  id             String       @id @default(uuid())
+  feeStructureId String
+  feeStructure   FeeStructure @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  paidAt         DateTime?
+  amount         Float
+  status         FeeStatus    @default(PENDING)
+  receiptNo      String?      @unique
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  title      String
+  message    String
+  targetRole String   // ALL, STUDENTS, PARENTS, TEACHERS, etc.
+  courseId   String?
+  course     Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  createdBy  String
+  creator    User     @relation("CreatedBy", fields: [createdBy], references: [id])
+  createdAt  DateTime @default(now())
+
+  reads NotificationRead[]
+}
+
+model NotificationRead {
+  id             String       @id @default(uuid())
+  notificationId String
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt         DateTime     @default(now())
+
+  @@unique([notificationId, userId])
+}
