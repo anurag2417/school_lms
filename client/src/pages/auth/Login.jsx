@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { School } from 'lucide-react';
 
 export default function Login() {
@@ -37,7 +37,10 @@ export default function Login() {
             Welcome to School LMS
           </h2>
           <p className="mt-2 text-sm text-slate-600">
-            Sign in to access your dashboard
+            Sign in to access your dashboard or{' '}
+            <Link to="/signup" className="font-medium text-primary-600 hover:text-primary-500">
+              create a new account
+            </Link>
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>

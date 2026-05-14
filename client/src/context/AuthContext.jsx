@@ -51,6 +51,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const register = async (name, email, password, role) => {
+    try {
+      const res = await axios.post('/auth/register', { name, email, password, role });
+      const newToken = res.data.data.token;
+      setToken(newToken);
+      localStorage.setItem('token', newToken);
+      setUser(res.data.data.user);
+      toast.success('Account created successfully');
+      return res.data.data.user.role;
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Registration failed');
+      throw error;
+    }
+  };
+
   const logout = () => {
     setToken(null);
     setUser(null);
@@ -60,7 +75,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -33,6 +33,7 @@ import StudentGrades from './pages/student/Grades';
 import ParentDashboard from './pages/parent/Dashboard';
 import Layout from './components/layout/Layout';
 import Landing from './pages/Landing';
+import Signup from './pages/auth/Signup';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -49,6 +50,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
       
       <Route element={<Layout />}>
         {/* Admin Routes */}
